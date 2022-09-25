@@ -10,127 +10,53 @@ import (
 
 var ErrInvalidString = errors.New("invalid string")
 
-const (
-	slash int = iota + 1
-	letter
-	digit
-)
-
 func Unpack(str string) (string, error) {
 	if str == "" {
 		return "", nil
 	}
-
-	err := checkString(str)
+	err := validateString(str)
 	if err != nil {
 		return "", err
 	}
-
+	runes := []rune(str)
+	length := len(runes)
 	var result strings.Builder
-	for i := 0; i < len(str); i++ {
-		err = add(&result, []rune(str), i)
+	for i := 0; i < length; {
+		var d int
+		var r, rn, rnn rune
+		r = runes[i]
+		if i+1 < length {
+			rn = runes[i+1]
+		}
+		if i+2 < length {
+			rnn = runes[i+2]
+		}
+		switch {
+		case isLetter(r) && isDigit(rn):
+			err = addRepeatedRune(&result, r, rn)
+			d = 2
+		case isLetter(r) && (isLetter(rn) || isSlash(rn)):
+			result.WriteString(string(r))
+			d = 1
+		case isSlash(r) && isDigit(rn) && !isDigit(rnn):
+			result.WriteString(string(rn))
+			d = 2
+		case isSlash(r) && isDigit(rn) && isDigit(rnn):
+			err = addRepeatedRune(&result, rn, rnn)
+			d = 3
+		case isSlash(r) && isSlash(rn) && isDigit(rnn):
+			err = addRepeatedRune(&result, rn, rnn)
+			d = 3
+		case isSlash(r) && isSlash(rn):
+			result.WriteString(string(rn))
+			d = 2
+		}
 		if err != nil {
 			return "", err
 		}
+		i += d
 	}
 	return result.String(), err
-}
-
-func add(result *strings.Builder, str []rune, i int) error {
-	r := str[i]
-	rt := runeType(r)
-	rpt, rppt, rpppt, rnt, rn := nearestValues(str, i)
-
-	switch rt {
-	case letter:
-		return addLetter(result, rnt, r, rn)
-
-	case slash:
-		return addSlash(result, rpt, rppt, rnt, r, rn)
-
-	case digit:
-		return addDigit(result, rpt, rppt, rpppt, rnt, r, rn)
-	}
-
-	return nil
-}
-
-func addDigit(result *strings.Builder, rpt, rppt, rpppt, rnt int, r, rn rune) error {
-	// \45
-	if rnt == digit && rpt == slash {
-		err := addRepeatedRune(result, r, rn)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	// \3 | \\\3
-	if rpt == slash && (rppt != slash || rpppt == slash) {
-		result.WriteString(string(r))
-		return nil
-	}
-
-	return nil
-}
-
-func addSlash(result *strings.Builder, rpt, rppt, rnt int, r, rn rune) error {
-	// \5
-	if rpt == slash && rnt == digit && rppt != slash {
-		err := addRepeatedRune(result, r, rn)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// \\
-	if rpt == slash && rppt != slash {
-		result.WriteString(string(r))
-		return nil
-	}
-
-	return nil
-}
-
-func addLetter(result *strings.Builder, rnt int, r, rn rune) error {
-	// a4
-	if rnt == digit {
-		err := addRepeatedRune(result, r, rn)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	// ab | e\ | last
-	if rnt == letter || rnt == slash || rnt == 0 {
-		result.WriteString(string(r))
-		return nil
-	}
-
-	return nil
-}
-
-func nearestValues(str []rune, i int) (int, int, int, int, rune) {
-	var (
-		rn                    rune
-		rpt, rppt, rpppt, rnt int
-	)
-
-	if i-3 >= 0 {
-		rpppt = runeType(str[i-3])
-	}
-	if i-2 >= 0 {
-		rppt = runeType(str[i-2])
-	}
-	if i-1 >= 0 {
-		rpt = runeType(str[i-1])
-	}
-	if i+1 < len(str) {
-		rn = str[i+1]
-		rnt = runeType(rn)
-	}
-
-	return rpt, rppt, rpppt, rnt, rn
 }
 
 func addRepeatedRune(result *strings.Builder, r, n rune) error {
@@ -139,49 +65,34 @@ func addRepeatedRune(result *strings.Builder, r, n rune) error {
 		return err
 	}
 	result.WriteString(strings.Repeat(string(r), num))
-
 	return nil
 }
 
-func runeType(r rune) int {
-	if r == '\\' {
-		return slash
-	}
-
-	if unicode.IsDigit(r) {
-		return digit
-	}
-
-	return letter
+func isSlash(r rune) bool {
+	return r == '\\'
 }
 
-func checkString(str string) error {
+func isDigit(r rune) bool {
+	return unicode.IsDigit(r)
+}
+
+func isLetter(r rune) bool {
+	return r != '\\' && !unicode.IsDigit(r)
+}
+
+func validateString(str string) error {
 	if unicode.IsDigit(rune(str[0])) {
 		return ErrInvalidString
 	}
-
-	var (
-		matched bool
-		err     error
-	)
-
-	matched, err = regexp.Match(`[^\\]\d{2}`, []byte(str))
-	if err != nil {
-		return err
+	rules := []string{`[^\\]\d{2}`, `\\[^\d\\]`}
+	for _, rule := range rules {
+		r, err := regexp.Compile(rule)
+		if err != nil {
+			return err
+		}
+		if matched := r.Match([]byte(str)); matched {
+			return ErrInvalidString
+		}
 	}
-
-	if matched {
-		return ErrInvalidString
-	}
-
-	matched, err = regexp.Match(`\\[^\d\\]`, []byte(str))
-	if err != nil {
-		return err
-	}
-
-	if matched {
-		return ErrInvalidString
-	}
-
 	return nil
 }
