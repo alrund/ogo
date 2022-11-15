@@ -109,7 +109,7 @@ func TestFilter(t *testing.T) {
 
 		expected := []*Word{word1, word2, word3}
 
-		require.Equal(t, expected, filter(map[string]*Word{
+		require.Subset(t, expected, filter(map[string]*Word{
 			word1.Value: word1,
 			word2.Value: word2,
 			word3.Value: word3,
