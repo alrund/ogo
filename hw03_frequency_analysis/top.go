@@ -11,28 +11,7 @@ type Word struct {
 	Num   int
 }
 
-type ByNumAndValue []*Word
-
-func (b ByNumAndValue) Len() int {
-	return len(b)
-}
-
-func (b ByNumAndValue) Less(i, j int) bool {
-	switch {
-	case b[i].Num > b[j].Num:
-		return true
-	case b[i].Num == b[j].Num:
-		return b[i].Value < b[j].Value
-	default:
-		return false
-	}
-}
-
-func (b ByNumAndValue) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-
-var reg = regexp.MustCompile(`[^а-яА-Я-]`)
+var reg = regexp.MustCompile(`[^а-я-]`)
 
 func Top10(text string) []string {
 	text = clean(text)
@@ -43,7 +22,16 @@ func Top10(text string) []string {
 		return nil
 	}
 
-	sort.Sort(ByNumAndValue(words))
+	sort.Slice(words, func(i, j int) bool {
+		switch {
+		case words[i].Num > words[j].Num:
+			return true
+		case words[i].Num == words[j].Num:
+			return words[i].Value < words[j].Value
+		default:
+			return false
+		}
+	})
 
 	result := make([]string, 0, 10)
 	for _, word := range words[:10] {
