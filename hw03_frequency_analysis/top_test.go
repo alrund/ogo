@@ -7,7 +7,7 @@ import (
 )
 
 // Change to true if needed.
-var taskWithAsteriskIsCompleted = false
+var taskWithAsteriskIsCompleted = true
 
 var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
@@ -78,5 +78,43 @@ func TestTop10(t *testing.T) {
 			}
 			require.Equal(t, expected, Top10(text))
 		}
+	})
+}
+
+func TestClean(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		expected := "- раз  два  три -"
+		require.Equal(t, expected, clean("- Раз, дВа! тРИ -"))
+	})
+}
+
+func TestCalculate(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		expected := map[string]*Word{
+			"раз": {Value: "раз", Num: 1},
+			"два": {Value: "два", Num: 2},
+			"три": {Value: "три", Num: 1},
+		}
+		require.Equal(t, expected, calculate("раз два два три"))
+	})
+}
+
+func TestFilter(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		word1 := &Word{Value: "раз", Num: 1}
+		word2 := &Word{Value: "два", Num: 2}
+		word3 := &Word{Value: "три", Num: 3}
+		word4 := &Word{Value: "", Num: 4}
+		word5 := &Word{Value: "-", Num: 5}
+
+		expected := []*Word{word1, word2, word3}
+
+		require.Subset(t, expected, filter(map[string]*Word{
+			word1.Value: word1,
+			word2.Value: word2,
+			word3.Value: word3,
+			word4.Value: word4,
+			word5.Value: word5,
+		}))
 	})
 }
