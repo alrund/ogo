@@ -91,9 +91,9 @@ func TestClean(t *testing.T) {
 func TestCalculate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		expected := map[string]*Word{
-			"раз": &Word{Value: "раз", Num: 1},
-			"два": &Word{Value: "два", Num: 2},
-			"три": &Word{Value: "три", Num: 1},
+			"раз": {Value: "раз", Num: 1},
+			"два": {Value: "два", Num: 2},
+			"три": {Value: "три", Num: 1},
 		}
 		require.Equal(t, expected, calculate("раз два два три"))
 	})
@@ -108,7 +108,7 @@ func TestFilter(t *testing.T) {
 		word5 := &Word{Value: "-", Num: 5}
 
 		expected := []*Word{word1, word2, word3}
-		
+
 		require.Equal(t, expected, filter(map[string]*Word{
 			word1.Value: word1,
 			word2.Value: word2,

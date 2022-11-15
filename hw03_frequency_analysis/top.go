@@ -18,11 +18,12 @@ func (b ByNumAndValue) Len() int {
 }
 
 func (b ByNumAndValue) Less(i, j int) bool {
-	if b[i].Num > b[j].Num {
+	switch {
+	case b[i].Num > b[j].Num:
 		return true
-	} else if b[i].Num == b[j].Num {
+	case b[i].Num == b[j].Num:
 		return b[i].Value < b[j].Value
-	} else {
+	default:
 		return false
 	}
 }
